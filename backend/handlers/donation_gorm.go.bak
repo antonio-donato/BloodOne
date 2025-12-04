@@ -1,0 +1,121 @@
+package handlers
+
+import (
+	"bloodone/database"
+	"bloodone/models"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetDonations - Lista tutte le donazioni
+func GetDonations(c *gin.Context) {
+	donorID := c.Query("donor_id")
+	
+	var donations []models.Donation
+	query := database.DB.Preload("Donor")
+	
+	if donorID != "" {
+		query = query.Where("donor_id = ?", donorID)
+	}
+	
+	query.Order("donation_date DESC").Find(&donations)
+	c.JSON(http.StatusOK, donations)
+}
+
+// GetDonation - Dettagli singola donazione
+func GetDonation(c *gin.Context) {
+	id := c.Param("id")
+	var donation models.Donation
+	
+	if err := database.DB.Preload("Donor").First(&donation, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Donation not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, donation)
+}
+
+// CreateDonation - Crea nuova donazione (Admin)
+func CreateDonation(c *gin.Context) {
+	var donation models.Donation
+	if err := c.ShouldBindJSON(&donation); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	donation.Status = models.DonationStatusCompleted
+	
+	if err := database.DB.Create(&donation).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create donation"})
+		return
+	}
+
+	// Aggiorna l'appuntamento corrispondente se esiste
+	var appointment models.Appointment
+	result := database.DB.Where("donor_id = ? AND confirmed_date = ? AND status = ?", 
+		donation.DonorID, donation.DonationDate, models.AppointmentStatusConfirmed).
+		First(&appointment)
+	
+	if result.Error == nil {
+		appointment.Status = models.AppointmentStatusCompleted
+		database.DB.Save(&appointment)
+	}
+
+	c.JSON(http.StatusCreated, donation)
+}
+
+// UpdateDonation - Aggiorna donazione (Admin)
+func UpdateDonation(c *gin.Context) {
+	id := c.Param("id")
+	var donation models.Donation
+	
+	if err := database.DB.First(&donation, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Donation not found"})
+		return
+	}
+
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Model(&donation).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update donation"})
+		return
+	}
+
+	c.JSON(http.StatusOK, donation)
+}
+
+// DeleteDonation - Elimina donazione (Admin)
+func DeleteDonation(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.Donation{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete donation"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Donation deleted successfully"})
+}
+
+// GetDonorHistory - Storico donazioni di un donatore
+func GetDonorHistory(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	isAdmin, _ := c.Get("is_admin")
+	donorID := c.Param("id")
+
+	// Gli utenti normali possono vedere solo il proprio storico
+	if !isAdmin.(bool) && stringToUint(donorID) != userID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only view your own history"})
+		return
+	}
+
+	var donations []models.Donation
+	database.DB.Where("donor_id = ?", donorID).
+		Order("donation_date DESC").
+		Find(&donations)
+
+	c.JSON(http.StatusOK, donations)
+}

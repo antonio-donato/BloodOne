@@ -1,0 +1,38 @@
+# Backend
+backend/bloodone.db
+backend/*.db
+
+# Frontend
+frontend/node_modules
+frontend/build
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/

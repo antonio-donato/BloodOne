@@ -1,0 +1,9 @@
+.admin-appointments {
+  padding: 30px 20px;
+}
+
+.admin-appointments h1 {
+  color: var(--text-color);
+  font-size: 32px;
+  margin-bottom: 30px;
+}

@@ -1,0 +1,189 @@
+package handlers
+
+import (
+	"bloodone/database"
+	"bloodone/models"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetSchedule - Ottieni configurazione schedule
+func GetSchedule(c *gin.Context) {
+	var schedule models.DonationSchedule
+	database.DB.First(&schedule)
+	c.JSON(http.StatusOK, schedule)
+}
+
+// UpdateSchedule - Aggiorna configurazione schedule (Admin)
+func UpdateSchedule(c *gin.Context) {
+	var schedule models.DonationSchedule
+	database.DB.First(&schedule)
+
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Model(&schedule).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update schedule"})
+		return
+	}
+
+	c.JSON(http.StatusOK, schedule)
+}
+
+// GetExcludedDates - Lista date escluse
+func GetExcludedDates(c *gin.Context) {
+	var dates []models.ExcludedDate
+	database.DB.Order("date ASC").Find(&dates)
+	c.JSON(http.StatusOK, dates)
+}
+
+// AddExcludedDate - Aggiungi data esclusa (Admin)
+func AddExcludedDate(c *gin.Context) {
+	var date models.ExcludedDate
+	if err := c.ShouldBindJSON(&date); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Create(&date).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add excluded date"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, date)
+}
+
+// DeleteExcludedDate - Rimuovi data esclusa (Admin)
+func DeleteExcludedDate(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.ExcludedDate{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete excluded date"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Excluded date deleted successfully"})
+}
+
+// GetSpecialCapacities - Lista capacità speciali
+func GetSpecialCapacities(c *gin.Context) {
+	var capacities []models.SpecialCapacity
+	database.DB.Order("date ASC").Find(&capacities)
+	c.JSON(http.StatusOK, capacities)
+}
+
+// SetSpecialCapacity - Imposta capacità speciale per una data (Admin)
+func SetSpecialCapacity(c *gin.Context) {
+	var capacity models.SpecialCapacity
+	if err := c.ShouldBindJSON(&capacity); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Cerca se esiste già
+	var existing models.SpecialCapacity
+	result := database.DB.Where("date = ?", capacity.Date.Format("2006-01-02")).First(&existing)
+	
+	if result.Error == nil {
+		// Aggiorna esistente
+		existing.Capacity = capacity.Capacity
+		database.DB.Save(&existing)
+		c.JSON(http.StatusOK, existing)
+	} else {
+		// Crea nuovo
+		if err := database.DB.Create(&capacity).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set special capacity"})
+			return
+		}
+		c.JSON(http.StatusCreated, capacity)
+	}
+}
+
+// DeleteSpecialCapacity - Rimuovi capacità speciale (Admin)
+func DeleteSpecialCapacity(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.SpecialCapacity{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete special capacity"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Special capacity deleted successfully"})
+}
+
+// GetSuspensions - Lista sospensioni
+func GetSuspensions(c *gin.Context) {
+	donorID := c.Query("donor_id")
+	
+	var suspensions []models.Suspension
+	query := database.DB.Preload("Donor")
+	
+	if donorID != "" {
+		query = query.Where("donor_id = ?", donorID)
+	}
+	
+	query.Order("start_date DESC").Find(&suspensions)
+	c.JSON(http.StatusOK, suspensions)
+}
+
+// CreateSuspension - Crea sospensione (Admin)
+func CreateSuspension(c *gin.Context) {
+	adminID, _ := c.Get("user_id")
+	
+	var suspension models.Suspension
+	if err := c.ShouldBindJSON(&suspension); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	suspension.CreatedBy = adminID.(uint)
+	suspension.IsActive = true
+	suspension.EndDate = suspension.StartDate.AddDate(0, suspension.DurationMonths, 0)
+	
+	if err := database.DB.Create(&suspension).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create suspension"})
+		return
+	}
+
+	// Aggiorna lo stato del donatore
+	var user models.User
+	database.DB.First(&user, suspension.DonorID)
+	user.IsSuspended = true
+	database.DB.Save(&user)
+
+	c.JSON(http.StatusCreated, suspension)
+}
+
+// EndSuspension - Termina sospensione (Admin)
+func EndSuspension(c *gin.Context) {
+	id := c.Param("id")
+	
+	var suspension models.Suspension
+	if err := database.DB.First(&suspension, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Suspension not found"})
+		return
+	}
+
+	suspension.IsActive = false
+	suspension.EndDate = time.Now()
+	database.DB.Save(&suspension)
+
+	// Verifica se ci sono altre sospensioni attive per questo donatore
+	var count int64
+	database.DB.Model(&models.Suspension{}).
+		Where("donor_id = ? AND is_active = ? AND end_date > ?", suspension.DonorID, true, time.Now()).
+		Count(&count)
+
+	if count == 0 {
+		// Nessuna altra sospensione attiva, aggiorna lo stato del donatore
+		var user models.User
+		database.DB.First(&user, suspension.DonorID)
+		user.IsSuspended = false
+		database.DB.Save(&user)
+	}
+
+	c.JSON(http.StatusOK, suspension)
+}

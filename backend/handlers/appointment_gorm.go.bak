@@ -1,0 +1,369 @@
+package handlers
+
+import (
+	"bloodone/database"
+	"bloodone/models"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetAppointments - Lista tutti gli appuntamenti
+func GetAppointments(c *gin.Context) {
+	donorID := c.Query("donor_id")
+	status := c.Query("status")
+	
+	var appointments []models.Appointment
+	query := database.DB.Preload("Donor")
+	
+	if donorID != "" {
+		query = query.Where("donor_id = ?", donorID)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	
+	query.Order("created_at DESC").Find(&appointments)
+	c.JSON(http.StatusOK, appointments)
+}
+
+// GetAppointment - Dettagli singolo appuntamento
+func GetAppointment(c *gin.Context) {
+	id := c.Param("id")
+	var appointment models.Appointment
+	
+	if err := database.DB.Preload("Donor").First(&appointment, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, appointment)
+}
+
+// CreateAppointment - Crea nuovo appuntamento (Admin)
+func CreateAppointment(c *gin.Context) {
+	var appointment models.Appointment
+	if err := c.ShouldBindJSON(&appointment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	appointment.Status = models.AppointmentStatusPending
+	appointment.NotificationSent = false
+	
+	if err := database.DB.Create(&appointment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create appointment"})
+		return
+	}
+
+	// TODO: Invia notifica al donatore
+	go sendNotificationToDonor(appointment.DonorID, appointment.ID)
+
+	c.JSON(http.StatusCreated, appointment)
+}
+
+// ProposeAppointmentDates - Propone 3 date per un donatore (Admin)
+func ProposeAppointmentDates(c *gin.Context) {
+	var req struct {
+		DonorID uint `json:"donor_id" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Trova il donatore
+	var user models.User
+	if err := database.DB.Preload("Donations").First(&user, req.DonorID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Donor not found"})
+		return
+	}
+
+	// Calcola la data di scadenza
+	var lastDonationDate time.Time
+	hasLastDonation := false
+	
+	for _, donation := range user.Donations {
+		if donation.Status == models.DonationStatusCompleted {
+			if !hasLastDonation || donation.DonationDate.After(lastDonationDate) {
+				lastDonationDate = donation.DonationDate
+				hasLastDonation = true
+			}
+		}
+	}
+
+	var startDate time.Time
+	if hasLastDonation {
+		interval := user.GetDonationInterval()
+		startDate = lastDonationDate.AddDate(0, interval, 0)
+	} else {
+		startDate = time.Now()
+	}
+
+	// Trova 3 date disponibili
+	proposedDates := findAvailableDates(startDate, 3)
+	
+	if len(proposedDates) < 3 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Not enough available dates found"})
+		return
+	}
+
+	// Crea l'appuntamento
+	appointment := models.Appointment{
+		DonorID:       req.DonorID,
+		ProposedDate1: proposedDates[0],
+		ProposedDate2: proposedDates[1],
+		ProposedDate3: proposedDates[2],
+		Status:        models.AppointmentStatusPending,
+	}
+
+	if err := database.DB.Create(&appointment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create appointment"})
+		return
+	}
+
+	// Invia notifica
+	go sendNotificationToDonor(req.DonorID, appointment.ID)
+
+	c.JSON(http.StatusCreated, appointment)
+}
+
+// ConfirmAppointment - Il donatore conferma una delle date proposte
+func ConfirmAppointment(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("user_id")
+	
+	var req struct {
+		SelectedDate time.Time `json:"selected_date" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var appointment models.Appointment
+	if err := database.DB.First(&appointment, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+		return
+	}
+
+	// Verifica che l'utente sia il proprietario dell'appuntamento
+	if appointment.DonorID != userID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only confirm your own appointments"})
+		return
+	}
+
+	// Verifica che la data selezionata sia una delle proposte
+	if !req.SelectedDate.Equal(appointment.ProposedDate1) &&
+	   !req.SelectedDate.Equal(appointment.ProposedDate2) &&
+	   !req.SelectedDate.Equal(appointment.ProposedDate3) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date selection"})
+		return
+	}
+
+	appointment.ConfirmedDate = &req.SelectedDate
+	appointment.Status = models.AppointmentStatusConfirmed
+	
+	if err := database.DB.Save(&appointment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to confirm appointment"})
+		return
+	}
+
+	// Notifica agli admin
+	go sendNotificationToAdmins(appointment.ID, "confirmed")
+
+	c.JSON(http.StatusOK, appointment)
+}
+
+// UpdateAppointment - Aggiorna appuntamento (Admin può modificare manualmente)
+func UpdateAppointment(c *gin.Context) {
+	id := c.Param("id")
+	adminID, _ := c.Get("user_id")
+	
+	var appointment models.Appointment
+	if err := database.DB.First(&appointment, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+		return
+	}
+
+	var updates struct {
+		ConfirmedDate *time.Time `json:"confirmed_date"`
+		Status        string     `json:"status"`
+		Notes         string     `json:"notes"`
+	}
+	
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if updates.ConfirmedDate != nil {
+		appointment.ConfirmedDate = updates.ConfirmedDate
+		appointment.AdminModified = true
+		modifiedBy := adminID.(uint)
+		appointment.ModifiedBy = &modifiedBy
+	}
+	
+	if updates.Status != "" {
+		appointment.Status = models.AppointmentStatus(updates.Status)
+	}
+	
+	if updates.Notes != "" {
+		appointment.Notes = updates.Notes
+	}
+
+	if err := database.DB.Save(&appointment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update appointment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, appointment)
+}
+
+// DeleteAppointment - Elimina appuntamento (Admin)
+func DeleteAppointment(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.Appointment{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete appointment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Appointment deleted successfully"})
+}
+
+// GetDonorAppointments - Appuntamenti di un donatore
+func GetDonorAppointments(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	isAdmin, _ := c.Get("is_admin")
+	donorID := c.Param("id")
+
+	// Gli utenti normali possono vedere solo i propri appuntamenti
+	if !isAdmin.(bool) && stringToUint(donorID) != userID.(uint) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only view your own appointments"})
+		return
+	}
+
+	var appointments []models.Appointment
+	database.DB.Where("donor_id = ?", donorID).
+		Order("created_at DESC").
+		Find(&appointments)
+
+	c.JSON(http.StatusOK, appointments)
+}
+
+// Helper functions
+func findAvailableDates(startDate time.Time, count int) []time.Time {
+	var dates []time.Time
+	currentDate := startDate
+
+	// Ottieni la configurazione dello schedule
+	var schedule models.DonationSchedule
+	database.DB.First(&schedule)
+
+	// Ottieni le date escluse
+	var excludedDates []models.ExcludedDate
+	database.DB.Find(&excludedDates)
+	excludedMap := make(map[string]bool)
+	for _, ed := range excludedDates {
+		excludedMap[ed.Date.Format("2006-01-02")] = true
+	}
+
+	for len(dates) < count {
+		// Verifica se il giorno è disponibile
+		if isDateAvailable(currentDate, schedule, excludedMap) {
+			// Verifica la capacità
+			if hasCapacity(currentDate, schedule) {
+				dates = append(dates, currentDate)
+			}
+		}
+		currentDate = currentDate.AddDate(0, 0, 1)
+		
+		// Limite di sicurezza: non cercare più di 60 giorni
+		if currentDate.After(startDate.AddDate(0, 0, 60)) {
+			break
+		}
+	}
+
+	return dates
+}
+
+func isDateAvailable(date time.Time, schedule models.DonationSchedule, excludedMap map[string]bool) bool {
+	// Verifica se è esclusa
+	if excludedMap[date.Format("2006-01-02")] {
+		return false
+	}
+
+	// Verifica il giorno della settimana
+	weekday := date.Weekday()
+	switch weekday {
+	case time.Monday:
+		return schedule.Monday
+	case time.Tuesday:
+		return schedule.Tuesday
+	case time.Wednesday:
+		return schedule.Wednesday
+	case time.Thursday:
+		return schedule.Thursday
+	case time.Friday:
+		return schedule.Friday
+	case time.Saturday:
+		return schedule.Saturday
+	case time.Sunday:
+		return schedule.Sunday
+	}
+	return false
+}
+
+func hasCapacity(date time.Time, schedule models.DonationSchedule) bool {
+	// Verifica capacità speciale
+	var specialCap models.SpecialCapacity
+	result := database.DB.Where("date = ?", date.Format("2006-01-02")).First(&specialCap)
+	
+	var capacity int
+	if result.Error == nil {
+		capacity = specialCap.Capacity
+	} else {
+		// Usa capacità standard
+		weekday := date.Weekday()
+		switch weekday {
+		case time.Monday:
+			capacity = schedule.MondayCapacity
+		case time.Tuesday:
+			capacity = schedule.TuesdayCapacity
+		case time.Wednesday:
+			capacity = schedule.WednesdayCapacity
+		case time.Thursday:
+			capacity = schedule.ThursdayCapacity
+		case time.Friday:
+			capacity = schedule.FridayCapacity
+		case time.Saturday:
+			capacity = schedule.SaturdayCapacity
+		case time.Sunday:
+			capacity = schedule.SundayCapacity
+		}
+	}
+
+	// Conta appuntamenti confermati per questa data
+	var count int64
+	database.DB.Model(&models.Appointment{}).
+		Where("confirmed_date = ? AND status IN ?", 
+			date.Format("2006-01-02"), 
+			[]string{string(models.AppointmentStatusConfirmed), string(models.AppointmentStatusCompleted)}).
+		Count(&count)
+
+	return int(count) < capacity
+}
+
+func sendNotificationToDonor(donorID uint, appointmentID uint) {
+	// TODO: Implementare invio notifica push
+	// Per ora solo log
+	database.DB.Model(&models.Appointment{}).Where("id = ?", appointmentID).
+		Update("notification_sent", true)
+}
+
+func sendNotificationToAdmins(appointmentID uint, action string) {
+	// TODO: Implementare notifica agli admin
+}

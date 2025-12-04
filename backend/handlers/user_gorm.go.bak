@@ -1,0 +1,215 @@
+package handlers
+
+import (
+	"bloodone/database"
+	"bloodone/models"
+	"net/http"
+	"time"
+	"sort"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+// GetUsers - Lista tutti gli utenti (Admin)
+func GetUsers(c *gin.Context) {
+	var users []models.User
+	database.DB.Preload("Donations").Preload("Appointments").Find(&users)
+
+	var response []models.UserResponse
+	for _, user := range users {
+		userResp := buildUserResponse(user)
+		response = append(response, userResp)
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetUser - Dettagli singolo utente
+func GetUser(c *gin.Context) {
+	id := c.Param("id")
+	var user models.User
+	
+	if err := database.DB.Preload("Donations").Preload("Appointments").Preload("Suspensions").First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	userResp := buildUserResponse(user)
+	c.JSON(http.StatusOK, userResp)
+}
+
+// GetCurrentUser - Informazioni utente corrente
+func GetCurrentUser(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	var user models.User
+	
+	if err := database.DB.Preload("Donations").Preload("Appointments").Preload("Suspensions").First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	userResp := buildUserResponse(user)
+	c.JSON(http.StatusOK, userResp)
+}
+
+// CreateUser - Crea nuovo utente (Admin)
+func CreateUser(c *gin.Context) {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := database.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, user)
+}
+
+// UpdateUser - Aggiorna utente
+func UpdateUser(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("user_id")
+	isAdmin, _ := c.Get("is_admin")
+
+	// Gli utenti normali possono modificare solo i propri dati
+	if !isAdmin.(bool) && userID.(uint) != stringToUint(id) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only update your own profile"})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Gli utenti normali non possono modificare is_admin
+	if !isAdmin.(bool) {
+		delete(updates, "is_admin")
+		delete(updates, "is_suspended")
+	}
+
+	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+// DeleteUser - Elimina utente (Admin)
+func DeleteUser(c *gin.Context) {
+	id := c.Param("id")
+	if err := database.DB.Delete(&models.User{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+// GetDonorsExpiringSoon - Donatori in scadenza (2 settimane prima)
+func GetDonorsExpiringSoon(c *gin.Context) {
+	var users []models.User
+	database.DB.Where("is_active = ? AND is_suspended = ?", true, false).
+		Preload("Donations", func(db *gorm.DB) *gorm.DB {
+			return db.Order("donation_date DESC")
+		}).
+		Find(&users)
+
+	var expiring []models.UserResponse
+	now := time.Now()
+	twoWeeksFromNow := now.AddDate(0, 0, 14)
+
+	for _, user := range users {
+		userResp := buildUserResponse(user)
+		
+		// Se la prossima data di scadenza è entro 2 settimane
+		if userResp.NextDueDate != nil && 
+		   userResp.NextDueDate.Before(twoWeeksFromNow) && 
+		   userResp.NextDueDate.After(now.AddDate(0, 0, -1)) {
+			expiring = append(expiring, userResp)
+		}
+	}
+
+	// Ordina per data di scadenza più vicina
+	sort.Slice(expiring, func(i, j int) bool {
+		return expiring[i].NextDueDate.Before(*expiring[j].NextDueDate)
+	})
+
+	c.JSON(http.StatusOK, expiring)
+}
+
+// Helper functions
+func buildUserResponse(user models.User) models.UserResponse {
+	resp := models.UserResponse{
+		ID:            user.ID,
+		Email:         user.Email,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		PhoneNumber:   user.PhoneNumber,
+		Gender:        user.Gender,
+		IsAdmin:       user.IsAdmin,
+		IsActive:      user.IsActive,
+		IsSuspended:   user.IsSuspended,
+		TotalDonations: len(user.Donations),
+	}
+
+	// Trova ultima donazione
+	var lastDonation *models.Donation
+	for _, donation := range user.Donations {
+		if donation.Status == models.DonationStatusCompleted {
+			if lastDonation == nil || donation.DonationDate.After(lastDonation.DonationDate) {
+				lastDonation = &donation
+			}
+		}
+	}
+
+	if lastDonation != nil {
+		resp.LastDonationDate = &lastDonation.DonationDate
+		
+		// Calcola giorni dall'ultima donazione
+		daysSince := int(time.Since(lastDonation.DonationDate).Hours() / 24)
+		resp.DaysSinceLastDonation = daysSince
+
+		// Calcola prossima data di scadenza
+		interval := user.GetDonationInterval()
+		
+		// Controlla sospensioni attive
+		var activeSuspension *models.Suspension
+		for _, susp := range user.Suspensions {
+			if susp.IsActive && time.Now().Before(susp.EndDate) {
+				activeSuspension = &susp
+				break
+			}
+		}
+
+		var nextDue time.Time
+		if activeSuspension != nil {
+			// Se sospeso, la prossima data è dopo la fine della sospensione
+			nextDue = activeSuspension.EndDate
+		} else {
+			// Altrimenti, è l'intervallo standard dall'ultima donazione
+			nextDue = lastDonation.DonationDate.AddDate(0, interval, 0)
+		}
+		resp.NextDueDate = &nextDue
+	}
+
+	return resp
+}
+
+func stringToUint(s string) uint {
+	val, _ := strconv.ParseUint(s, 10, 32)
+	return uint(val)
+}

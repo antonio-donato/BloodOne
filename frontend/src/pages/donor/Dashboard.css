@@ -1,0 +1,231 @@
+.donor-dashboard {
+  padding: 30px 20px;
+}
+
+.dashboard-header {
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.dashboard-header h1 {
+  color: var(--text-color);
+  font-size: 32px;
+  margin: 0;
+}
+
+.donation-badge {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  padding: 15px 30px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.badge-number {
+  display: block;
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.badge-label {
+  display: block;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.dashboard-card h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: var(--text-color);
+}
+
+.date-display {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 10px 0;
+}
+
+.days-since {
+  color: var(--text-light);
+  font-size: 16px;
+}
+
+.no-data {
+  color: var(--text-light);
+  font-style: italic;
+  margin: 20px 0;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 10px;
+  background-color: var(--background-alt);
+  color: var(--text-color);
+}
+
+.status-badge.confirmed {
+  background-color: #d1fae5;
+  color: var(--success-color);
+}
+
+.status-badge.pending {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.appointment-selector {
+  margin-bottom: 30px;
+}
+
+.appointment-selector h2 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.info-text {
+  color: var(--text-light);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.date-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.date-option-btn {
+  background: white;
+  border: 2px solid var(--border-color);
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.date-option-btn:hover {
+  border-color: var(--primary-color);
+  background-color: #fef2f2;
+  transform: translateY(-2px);
+}
+
+.date-day {
+  font-size: 14px;
+  color: var(--text-light);
+  text-transform: capitalize;
+}
+
+.date-number {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+  text-transform: capitalize;
+}
+
+.appointment-confirmed {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid var(--success-color);
+}
+
+.appointment-confirmed h2 {
+  color: var(--success-color);
+}
+
+.confirmed-date {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.date-icon {
+  font-size: 48px;
+}
+
+.date-info .date-day {
+  font-size: 18px;
+  color: var(--text-color);
+  text-transform: capitalize;
+  margin-bottom: 5px;
+}
+
+.date-info .date-full {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--success-color);
+  text-transform: capitalize;
+}
+
+.admin-note {
+  background-color: #fef3c7;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin: 15px 0;
+  color: #d97706;
+  font-size: 14px;
+}
+
+.appointment-notes {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  color: var(--text-color);
+}
+
+.suspended-alert {
+  background-color: #fee2e2;
+  border: 2px solid var(--danger-color);
+}
+
+.suspended-alert h2 {
+  color: var(--danger-color);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 18px;
+  color: var(--text-light);
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dashboard-header h1 {
+    font-size: 24px;
+  }
+
+  .donation-badge {
+    padding: 20px;
+  }
+
+  .date-options {
+    grid-template-columns: 1fr;
+  }
+}
