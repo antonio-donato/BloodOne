@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/BloodOne/static/css/main.43ed6758.css",
+    "main.js": "/BloodOne/static/js/main.46609945.js",
+    "index.html": "/BloodOne/index.html",
+    "main.43ed6758.css.map": "/BloodOne/static/css/main.43ed6758.css.map",
+    "main.46609945.js.map": "/BloodOne/static/js/main.46609945.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.43ed6758.css",
+    "static/js/main.46609945.js"
+  ]
+}
