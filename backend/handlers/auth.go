@@ -20,6 +20,7 @@ import (
 var (
 	googleOauthConfig *oauth2.Config
 	jwtSecret         []byte
+	frontendBaseURL   string
 )
 
 type Claims struct {
@@ -36,6 +37,12 @@ func InitOAuth() {
 		secret = "dev-secret-change-in-production"
 	}
 	jwtSecret = []byte(secret)
+
+	// Carica URL frontend da env o usa default per sviluppo
+	frontendBaseURL = os.Getenv("FRONTEND_URL")
+	if frontendBaseURL == "" {
+		frontendBaseURL = "http://localhost:3000"
+	}
 
 	// Carica credenziali Google da env
 	clientID := os.Getenv("GOOGLE_CLIENT_ID")
@@ -175,7 +182,7 @@ func GoogleCallback(c *gin.Context) {
 				params.Add("request_date", pendingRequest.CreatedAt.Format("2006-01-02T15:04:05"))
 			}
 
-			frontendURL := "http://localhost:3000/not-registered?" + params.Encode()
+			frontendURL := frontendBaseURL + "/BloodOne/not-registered?" + params.Encode()
 			c.Redirect(http.StatusFound, frontendURL)
 			return
 		}
@@ -200,6 +207,6 @@ func GoogleCallback(c *gin.Context) {
 	}
 
 	// Redirect al frontend con il token
-	frontendURL := "http://localhost:3000/login?token=" + tokenString
+	frontendURL := frontendBaseURL + "/BloodOne/login?token=" + tokenString
 	c.Redirect(http.StatusFound, frontendURL)
 }
