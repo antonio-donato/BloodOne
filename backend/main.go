@@ -31,7 +31,10 @@ func main() {
 
 	// CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "https://yourusername.github.io"}
+	config.AllowOrigins = []string{
+		"http://localhost:3000",
+		"https://antonio-donato.github.io",
+	}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	router.Use(cors.New(config))
 

@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd backend && go build -o main ."
+
+[deploy]
+startCommand = "cd backend && ./main"
+healthcheckPath = "/api/admin/schedule"
+restartPolicyType = "on_failure"

@@ -9,7 +9,6 @@ Sistema completo di gestione appuntamenti per donazioni di sangue.
 - **Autenticazione Google OAuth** - Login sicuro con account Google
 - **Dashboard Amministratore** - Gestione completa donatori e appuntamenti
 - **Dashboard Donatore** - Visualizzazione storico e conferma appuntamenti
-- **Sistema di Notifiche** - Notifiche push per nuovi appuntamenti
 - **Gestione Scadenze** - Calcolo automatico date donazione in base al sesso
 - **Sistema di Sospensioni** - Gestione sospensioni temporanee donatori
 
@@ -23,19 +22,24 @@ Sistema completo di gestione appuntamenti per donazioni di sangue.
 - Node.js 18 o superiore
 - npm o yarn
 
-## 🚀 Installazione
+---
+
+## 🚀 Installazione Locale (Sviluppo)
 
 ### 1. Configurazione Google OAuth
 
 1. Vai su [Google Cloud Console](https://console.cloud.google.com/)
-2. Crea un nuovo progetto
-3. Abilita l'API "Google+ API"
-4. Crea credenziali OAuth 2.0:
-   - Tipo applicazione: Web application
+2. Crea un nuovo progetto (es. "BloodOne")
+3. Vai su **API e servizi** → **Schermata consenso OAuth**
+   - Seleziona "Esterno" e compila i campi obbligatori
+4. Vai su **Credenziali** → **Crea credenziali** → **ID client OAuth 2.0**
+   - Tipo applicazione: **Applicazione web**
+   - Nome: "BloodOne"
+   - Origini JavaScript autorizzate:
+     - `http://localhost:3000`
    - URI di reindirizzamento autorizzati:
-     - `http://localhost:3000/auth/callback` (sviluppo)
-     - `https://yourusername.github.io/BloodOne/auth/callback` (produzione)
-5. Salva Client ID e Client Secret
+     - `http://localhost:8080/api/auth/callback`
+5. Copia **Client ID** e **Client Secret**
 
 ### 2. Setup Backend
 
@@ -45,12 +49,21 @@ cd backend
 # Installa dipendenze
 go mod download
 
-# Configura le credenziali OAuth
-# Modifica backend/handlers/auth.go e inserisci:
-# - YOUR_GOOGLE_CLIENT_ID
-# - YOUR_GOOGLE_CLIENT_SECRET
+# Crea il file .env con le tue credenziali
+# (copia da .env.example e modifica i valori)
+cp .env.example .env
+```
 
-# Avvia il server
+Modifica `backend/.env`:
+```env
+GOOGLE_CLIENT_ID=il-tuo-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=il-tuo-client-secret
+GOOGLE_REDIRECT_URL=http://localhost:8080/api/auth/callback
+JWT_SECRET=una-chiave-segreta-casuale
+```
+
+Avvia il server:
+```bash
 go run main.go
 ```
 
@@ -64,67 +77,184 @@ cd frontend
 # Installa dipendenze
 npm install
 
-# Crea file .env
-echo "REACT_APP_API_URL=http://localhost:8080/api" > .env
-echo "REACT_APP_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID" >> .env
-
-# Modifica frontend/src/index.js e inserisci il tuo Google Client ID
-
 # Avvia l'applicazione
 npm start
 ```
 
 L'applicazione sarà disponibile su `http://localhost:3000`
 
-## 📦 Deployment su GitHub Pages
+---
 
-### 1. Configura il repository
+## 🌐 Deploy in Produzione (GitHub Pages + Railway)
 
-```bash
-# Modifica frontend/package.json
-# Cambia "homepage" con: "https://yourusername.github.io/BloodOne"
+Questa guida ti mostra come deployare:
+- **Frontend** → GitHub Pages (gratuito)
+- **Backend** → Railway (gratuito con limiti)
 
-# Modifica .github/workflows/deploy.yml se necessario
+### Panoramica Architettura
+
+```
+┌─────────────────────┐     HTTPS      ┌──────────────────────┐
+│   GitHub Pages      │ ◄────────────► │      Railway         │
+│   (Frontend React)  │                │    (Backend Go)      │
+│                     │                │                      │
+│ antonio-donato.     │                │ bloodone-backend.    │
+│ github.io/BloodOne  │                │ railway.app          │
+└─────────────────────┘                └──────────────────────┘
+                                                │
+                                                ▼
+                                       ┌──────────────────┐
+                                       │  Google OAuth    │
+                                       └──────────────────┘
 ```
 
-### 2. Configura i Secrets su GitHub
+---
 
-Nel tuo repository GitHub, vai su Settings > Secrets and variables > Actions:
+### STEP 1: Deploy Backend su Railway
 
-- `REACT_APP_API_URL`: URL del tuo backend in produzione
+#### 1.1 Crea account Railway
+1. Vai su [railway.app](https://railway.app/)
+2. Clicca **Login** → **Login with GitHub**
+3. Autorizza Railway
 
-### 3. Deploy
+#### 1.2 Crea nuovo progetto
+1. Clicca **New Project**
+2. Seleziona **Deploy from GitHub repo**
+3. Cerca e seleziona il tuo repository `BloodOne`
+4. Railway rileverà automaticamente il progetto
 
+#### 1.3 Configura il build (già fatto!)
+Il file `railway.toml` nella root del progetto dice a Railway di:
+- Buildare dalla cartella `backend`
+- Eseguire il binario Go
+
+Non devi configurare nulla manualmente!
+
+#### 1.4 Configura le variabili d'ambiente
+1. Vai su **Variables**
+2. Aggiungi le seguenti variabili:
+
+| Variable | Value |
+|----------|-------|
+| `GOOGLE_CLIENT_ID` | `il-tuo-client-id.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | `il-tuo-client-secret` |
+| `GOOGLE_REDIRECT_URL` | `https://TUO-BACKEND.railway.app/api/auth/callback` |
+| `JWT_SECRET` | `una-chiave-segreta-molto-lunga-e-casuale` |
+| `PORT` | `8080` |
+| `GIN_MODE` | `release` |
+
+#### 1.5 Ottieni l'URL del backend
+1. Vai su **Settings** → **Networking**
+2. Clicca **Generate Domain**
+3. Copia l'URL generato (es. `bloodone-backend-production.up.railway.app`)
+
+#### 1.6 Aggiorna Google Cloud Console
+Torna su Google Cloud Console e aggiungi:
+- **URI di reindirizzamento autorizzati**:
+  - `https://TUO-BACKEND.railway.app/api/auth/callback`
+
+---
+
+### STEP 2: Configura CORS nel Backend
+
+Modifica `backend/main.go` per accettare richieste dal tuo dominio GitHub Pages:
+
+```go
+// CORS
+config := cors.DefaultConfig()
+config.AllowOrigins = []string{
+    "http://localhost:3000",                        // Sviluppo
+    "https://antonio-donato.github.io",             // Produzione
+}
+config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+router.Use(cors.New(config))
+```
+
+Committa e pusha le modifiche - Railway ri-deployerà automaticamente.
+
+---
+
+### STEP 3: Deploy Frontend su GitHub Pages
+
+#### 3.1 Verifica package.json
+Il file `frontend/package.json` deve avere:
+```json
+{
+  "homepage": "https://antonio-donato.github.io/BloodOne",
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
+  }
+}
+```
+
+#### 3.2 Configura GitHub Secrets
+1. Vai sul tuo repository GitHub
+2. **Settings** → **Secrets and variables** → **Actions**
+3. Clicca **New repository secret**
+4. Aggiungi:
+
+| Name | Value |
+|------|-------|
+| `REACT_APP_API_URL` | `https://TUO-BACKEND.railway.app/api` |
+
+#### 3.3 Pusha su GitHub
 ```bash
 git add .
-git commit -m "Initial commit"
+git commit -m "Configure production deployment"
 git push origin main
 ```
 
-GitHub Actions builderà e deployerà automaticamente l'applicazione.
+GitHub Actions builderà e deployerà automaticamente su GitHub Pages.
 
-### 4. Backend in Produzione
+#### 3.4 Abilita GitHub Pages (prima volta)
+1. Vai su **Settings** → **Pages**
+2. In **Source** seleziona: **Deploy from a branch**
+3. Seleziona branch: `gh-pages` e cartella `/ (root)`
+4. Clicca **Save**
 
-Per il backend in produzione, considera l'utilizzo di:
-- **Railway** - Deploy gratuito per Go apps
-- **Heroku** - Platform-as-a-Service
-- **Google Cloud Run** - Serverless container
-- **VPS** (DigitalOcean, Linode) - Controllo completo
+---
 
-Esempio deploy su Railway:
+### STEP 4: Verifica il Deploy
+
+1. **Frontend**: `https://antonio-donato.github.io/BloodOne`
+2. **Backend Health Check**: `https://TUO-BACKEND.railway.app/api/admin/schedule`
+3. Prova il login con Google
+
+---
+
+### 🔧 Troubleshooting
+
+#### Il login Google non funziona
+- Verifica che l'URI di redirect in Google Console corrisponda esattamente
+- Controlla che le variabili d'ambiente su Railway siano corrette
+
+#### CORS errors
+- Verifica che il dominio GitHub Pages sia nella lista AllowOrigins
+- Controlla la console del browser per dettagli
+
+#### 404 su GitHub Pages (refresh)
+Le SPA React hanno bisogno di un workaround per il routing:
 ```bash
-# Installa Railway CLI
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Deploy
-cd backend
-railway up
+# Nel frontend/public/ crea un file 404.html
+cp frontend/build/index.html frontend/public/404.html
 ```
 
-Ricorda di aggiornare le CORS nel backend (`main.go`) con il dominio di produzione.
+#### Railway deploy fallisce
+- Controlla i log in Railway Dashboard
+- Verifica che `backend/go.mod` esista e sia corretto
+
+---
+
+### 💰 Costi
+
+| Servizio | Piano | Costo |
+|----------|-------|-------|
+| GitHub Pages | Free | $0 |
+| Railway | Starter | $5/mese di crediti gratuiti |
+| Google OAuth | Free | $0 |
+
+Railway offre $5 di crediti gratuiti al mese, sufficienti per un'app a basso traffico.
 
 ## 📖 Utilizzo
 
@@ -162,16 +292,16 @@ Le notifiche vengono inviate automaticamente quando:
 ## 🛠️ Tecnologie Utilizzate
 
 ### Backend
-- **Go** - Linguaggio principale
+- **Go 1.21** - Linguaggio principale
 - **Gin** - Web framework
-- **GORM** - ORM per database
-- **SQLite** - Database (facilmente sostituibile con PostgreSQL/MySQL)
+- **JSON File Database** - Persistenza dati senza dipendenze esterne
 - **JWT** - Autenticazione token
 - **OAuth2** - Google authentication
+- **godotenv** - Gestione variabili d'ambiente
 
 ### Frontend
 - **React 18** - UI library
-- **React Router** - Routing
+- **React Router v6** - Routing
 - **Axios** - HTTP client
 - **React Toastify** - Notifiche
 - **React Calendar** - Componente calendario
