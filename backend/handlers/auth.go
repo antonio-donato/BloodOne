@@ -182,7 +182,7 @@ func GoogleCallback(c *gin.Context) {
 				params.Add("request_date", pendingRequest.CreatedAt.Format("2006-01-02T15:04:05"))
 			}
 
-			frontendURL := frontendBaseURL + "/BloodOne/not-registered?" + params.Encode()
+			frontendURL := frontendBaseURL + "/not-registered?" + params.Encode()
 			c.Redirect(http.StatusFound, frontendURL)
 			return
 		}
@@ -207,6 +207,6 @@ func GoogleCallback(c *gin.Context) {
 	}
 
 	// Redirect al frontend con il token
-	frontendURL := frontendBaseURL + "/BloodOne/login?token=" + tokenString
+	frontendURL := frontendBaseURL + "/login?token=" + tokenString
 	c.Redirect(http.StatusFound, frontendURL)
 }
