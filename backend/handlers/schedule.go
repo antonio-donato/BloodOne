@@ -20,12 +20,12 @@ func UpdateSchedule(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	// Mantieni l'ID e i timestamp
 	schedule.ID = database.DB.Schedule.ID
 	schedule.CreatedAt = database.DB.Schedule.CreatedAt
 	schedule.UpdatedAt = time.Now()
-	
+
 	database.DB.Schedule = &schedule
 	database.DB.Save()
 	c.JSON(http.StatusOK, database.DB.Schedule)
@@ -44,13 +44,13 @@ func AddExcludedDate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	parsedDate, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Formato data non valido"})
 		return
 	}
-	
+
 	// Verifica duplicati
 	for _, ed := range database.DB.ExcludedDates {
 		if ed.Date.Format("2006-01-02") == req.Date {
@@ -58,7 +58,7 @@ func AddExcludedDate(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	date := models.ExcludedDate{
 		ID:        database.DB.NextExcludedDateID(),
 		CreatedAt: time.Now(),
@@ -72,7 +72,7 @@ func AddExcludedDate(c *gin.Context) {
 
 func DeleteExcludedDate(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	
+
 	for i, ed := range database.DB.ExcludedDates {
 		if ed.ID == uint(id) {
 			database.DB.ExcludedDates = append(database.DB.ExcludedDates[:i], database.DB.ExcludedDates[i+1:]...)
@@ -120,7 +120,7 @@ func CreateSuspension(c *gin.Context) {
 	suspension.IsActive = true
 	suspension.EndDate = suspension.StartDate.AddDate(0, suspension.DurationMonths, 0)
 	suspension.CreatedAt = time.Now()
-	
+
 	// Aggiorna stato utente
 	for i, u := range database.DB.Users {
 		if u.ID == suspension.DonorID {
@@ -128,7 +128,7 @@ func CreateSuspension(c *gin.Context) {
 			break
 		}
 	}
-	
+
 	database.DB.Suspensions = append(database.DB.Suspensions, suspension)
 	database.DB.Save()
 	c.JSON(http.StatusCreated, suspension)
@@ -140,7 +140,7 @@ func EndSuspension(c *gin.Context) {
 		if s.ID == uint(id) {
 			database.DB.Suspensions[i].IsActive = false
 			database.DB.Suspensions[i].EndDate = time.Now()
-			
+
 			// Aggiorna stato utente
 			for j, u := range database.DB.Users {
 				if u.ID == s.DonorID {
@@ -148,7 +148,7 @@ func EndSuspension(c *gin.Context) {
 					break
 				}
 			}
-			
+
 			database.DB.Save()
 			c.JSON(http.StatusOK, database.DB.Suspensions[i])
 			return

@@ -25,7 +25,7 @@ func GetUsers(c *gin.Context) {
 // GetUser - Dettagli singolo utente
 func GetUser(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	
+
 	for _, user := range database.DB.Users {
 		if user.ID == uint(id) {
 			userResp := buildUserResponseSimple(user)
@@ -39,7 +39,7 @@ func GetUser(c *gin.Context) {
 // GetCurrentUser - Informazioni utente corrente
 func GetCurrentUser(c *gin.Context) {
 	userID, _ := c.Get("user_id")
-	
+
 	for _, user := range database.DB.Users {
 		if user.ID == userID.(uint) {
 			userResp := buildUserResponseSimple(user)
@@ -64,7 +64,7 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email is required"})
 		return
 	}
-	
+
 	for _, u := range database.DB.Users {
 		if u.Email == email {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Email already exists"})
@@ -97,7 +97,7 @@ func CreateUser(c *gin.Context) {
 			user.BirthDate = &birthDate
 		}
 	}
-	
+
 	database.DB.Users = append(database.DB.Users, user)
 	database.DB.Save()
 
@@ -176,7 +176,7 @@ func UpdateUser(c *gin.Context) {
 				if isusp, ok := updates["is_suspended"].(bool); ok {
 					database.DB.Users[i].IsSuspended = isusp
 				}
-				
+
 				// Gestione data ultima donazione (solo admin)
 				if ldd, ok := updates["last_donation_date"].(string); ok && ldd != "" {
 					if donationDate, err := time.Parse("2006-01-02", ldd); err == nil {
@@ -188,7 +188,7 @@ func UpdateUser(c *gin.Context) {
 								break
 							}
 						}
-						
+
 						if existingDonation != nil {
 							// Aggiorna la donazione esistente
 							existingDonation.DonationDate = donationDate
@@ -208,14 +208,14 @@ func UpdateUser(c *gin.Context) {
 						}
 					}
 				}
-				
+
 				// Gestione prossimo appuntamento (solo admin)
 				if nad, ok := updates["next_appointment_date"].(string); ok {
 					if nad == "" {
 						// Se vuoto, rimuovi l'appuntamento confermato esistente
 						for j := range database.DB.Appointments {
-							if database.DB.Appointments[j].DonorID == user.ID && 
-							   database.DB.Appointments[j].Status == models.AppointmentStatusConfirmed {
+							if database.DB.Appointments[j].DonorID == user.ID &&
+								database.DB.Appointments[j].Status == models.AppointmentStatusConfirmed {
 								database.DB.Appointments[j].Status = models.AppointmentStatusCancelled
 								database.DB.Appointments[j].UpdatedAt = time.Now()
 								break
@@ -225,13 +225,13 @@ func UpdateUser(c *gin.Context) {
 						// Cerca se esiste già un appuntamento confermato per questo utente
 						var existingAppointment *models.Appointment
 						for j := range database.DB.Appointments {
-							if database.DB.Appointments[j].DonorID == user.ID && 
-							   database.DB.Appointments[j].Status == models.AppointmentStatusConfirmed {
+							if database.DB.Appointments[j].DonorID == user.ID &&
+								database.DB.Appointments[j].Status == models.AppointmentStatusConfirmed {
 								existingAppointment = &database.DB.Appointments[j]
 								break
 							}
 						}
-						
+
 						if existingAppointment != nil {
 							// Aggiorna l'appuntamento esistente
 							existingAppointment.ConfirmedDate = &appointmentDate
@@ -260,7 +260,7 @@ func UpdateUser(c *gin.Context) {
 			}
 			database.DB.Users[i].UpdatedAt = time.Now()
 			database.DB.Save()
-			
+
 			// Restituisci UserResponse con tutti i campi calcolati
 			userResp := buildUserResponseSimple(database.DB.Users[i])
 			c.JSON(http.StatusOK, userResp)
@@ -273,7 +273,7 @@ func UpdateUser(c *gin.Context) {
 // DeleteUser - Elimina utente (Admin)
 func DeleteUser(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	
+
 	for i, user := range database.DB.Users {
 		if user.ID == uint(id) {
 			database.DB.Users = append(database.DB.Users[:i], database.DB.Users[i+1:]...)
@@ -296,12 +296,12 @@ func GetDonorsExpiringSoon(c *gin.Context) {
 		if !user.IsActive || user.IsSuspended {
 			continue
 		}
-		
+
 		// Verifica se ha già un appuntamento confermato o pending futuro
 		hasActiveAppointment := false
 		for _, apt := range database.DB.Appointments {
-			if apt.DonorID == user.ID && 
-			   (apt.Status == models.AppointmentStatusConfirmed || apt.Status == models.AppointmentStatusPending) {
+			if apt.DonorID == user.ID &&
+				(apt.Status == models.AppointmentStatusConfirmed || apt.Status == models.AppointmentStatusPending) {
 				// Per confermati, verifica che la data sia oggi o futura
 				if apt.Status == models.AppointmentStatusConfirmed && apt.ConfirmedDate != nil {
 					aptDate := time.Date(apt.ConfirmedDate.Year(), apt.ConfirmedDate.Month(), apt.ConfirmedDate.Day(), 0, 0, 0, 0, apt.ConfirmedDate.Location())
@@ -317,14 +317,14 @@ func GetDonorsExpiringSoon(c *gin.Context) {
 				}
 			}
 		}
-		
+
 		// Se ha già un appuntamento attivo (confermato o pending), non includerlo
 		if hasActiveAppointment {
 			continue
 		}
-		
+
 		userResp := buildUserResponseSimple(user)
-		
+
 		// Include: già scaduti (NextDueDate nel passato) O in scadenza nei prossimi 14 giorni
 		if userResp.NextDueDate != nil && userResp.NextDueDate.Before(twoWeeksFromNow) {
 			expiring = append(expiring, userResp)
@@ -340,17 +340,17 @@ func GetDonorsExpiringSoon(c *gin.Context) {
 
 func buildUserResponseSimple(user models.User) models.UserResponse {
 	resp := models.UserResponse{
-		ID:            user.ID,
-		Email:         user.Email,
-		FirstName:     user.FirstName,
-		LastName:      user.LastName,
-		PhoneNumber:   user.PhoneNumber,
-		Gender:        user.Gender,
-		BloodType:     user.BloodType,
-		BirthDate:     user.BirthDate,
-		IsAdmin:       user.IsAdmin,
-		IsActive:      user.IsActive,
-		IsSuspended:   user.IsSuspended,
+		ID:          user.ID,
+		Email:       user.Email,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		PhoneNumber: user.PhoneNumber,
+		Gender:      user.Gender,
+		BloodType:   user.BloodType,
+		BirthDate:   user.BirthDate,
+		IsAdmin:     user.IsAdmin,
+		IsActive:    user.IsActive,
+		IsSuspended: user.IsSuspended,
 	}
 
 	// Conta donazioni e trova ultima
@@ -373,7 +373,7 @@ func buildUserResponseSimple(user models.User) models.UserResponse {
 		resp.DaysSinceLastDonation = daysSince
 
 		interval := user.GetDonationInterval()
-		
+
 		// Controlla sospensioni attive
 		var activeSuspension *models.Suspension
 		for _, susp := range database.DB.Suspensions {
@@ -392,14 +392,14 @@ func buildUserResponseSimple(user models.User) models.UserResponse {
 		}
 		resp.NextDueDate = &nextDue
 	}
-	
+
 	// Trova prossimo appuntamento confermato
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	for _, apt := range database.DB.Appointments {
-		if apt.DonorID == user.ID && 
-		   apt.Status == models.AppointmentStatusConfirmed && 
-		   apt.ConfirmedDate != nil {
+		if apt.DonorID == user.ID &&
+			apt.Status == models.AppointmentStatusConfirmed &&
+			apt.ConfirmedDate != nil {
 			// Includi se la data è oggi o nel futuro
 			aptDate := time.Date(apt.ConfirmedDate.Year(), apt.ConfirmedDate.Month(), apt.ConfirmedDate.Day(), 0, 0, 0, 0, apt.ConfirmedDate.Location())
 			if !aptDate.Before(today) {

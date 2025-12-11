@@ -1,6 +1,9 @@
 # Backend
 backend/bloodone.db
 backend/*.db
+backend/bloodone_data.json
+backend/.env
+backend/*.exe
 
 # Frontend
 frontend/node_modules

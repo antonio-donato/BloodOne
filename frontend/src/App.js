@@ -43,7 +43,7 @@ function AppContent() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/not-registered" element={<NotRegistered />} />
-        
+
         {/* Donor Routes */}
         <Route
           path="/dashboard"
@@ -123,7 +123,7 @@ function AppContent() {
 function App() {
   // Usa basename solo per GitHub Pages (non per localhost)
   const basename = process.env.NODE_ENV === 'production' ? process.env.PUBLIC_URL : '';
-  
+
   return (
     <Router basename={basename}>
       <AuthProvider>

@@ -7,7 +7,7 @@ import './Users.css';
 function AdminUsers() {
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get('filter') || 'all';
-  
+
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +54,7 @@ function AdminUsers() {
     let filtered = users;
 
     if (searchTerm) {
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -112,12 +112,12 @@ function AdminUsers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.gender) {
       toast.error('Il sesso è obbligatorio');
       return;
     }
-    
+
     try {
       if (editingUser) {
         await adminUserAPI.updateUser(editingUser.id, formData);
@@ -136,7 +136,7 @@ function AdminUsers() {
 
   const handleDelete = async (userId) => {
     if (!window.confirm('Sei sicuro di voler eliminare questo utente?')) return;
-    
+
     try {
       await adminUserAPI.deleteUser(userId);
       toast.success('Utente eliminato');

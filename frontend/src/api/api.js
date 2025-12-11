@@ -71,9 +71,9 @@ export const adminDonationAPI = {
 // Admin - Appointments
 export const adminAppointmentAPI = {
   getAppointments: (params) => api.get('/admin/appointments', { params }),
-  proposeAppointment: (donorId, dates) => api.post('/admin/appointments/propose', { 
+  proposeAppointment: (donorId, dates) => api.post('/admin/appointments/propose', {
     donor_id: donorId,
-    ...dates 
+    ...dates
   }),
   updateAppointment: (id, data) => api.put(`/admin/appointments/${id}`, data),
   deleteAppointment: (id) => api.delete(`/admin/appointments/${id}`),
@@ -82,7 +82,7 @@ export const adminAppointmentAPI = {
 
 // Appointments (Donor)
 export const appointmentAPI = {
-  confirmAppointment: (id, selectedDate) => 
+  confirmAppointment: (id, selectedDate) =>
     api.post(`/appointments/${id}/confirm`, { selected_date: selectedDate }),
 };
 

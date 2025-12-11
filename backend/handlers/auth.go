@@ -5,6 +5,7 @@ import (
 	"bloodone/models"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"encoding/json"
@@ -18,7 +19,7 @@ import (
 
 var (
 	googleOauthConfig *oauth2.Config
-	jwtSecret         = []byte("your-secret-key-change-this-in-production")
+	jwtSecret         []byte
 )
 
 type Claims struct {
@@ -29,10 +30,29 @@ type Claims struct {
 }
 
 func InitOAuth() {
+	// Carica JWT secret da env o usa default per sviluppo
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "dev-secret-change-in-production"
+	}
+	jwtSecret = []byte(secret)
+
+	// Carica credenziali Google da env
+	clientID := os.Getenv("GOOGLE_CLIENT_ID")
+	clientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+	if redirectURL == "" {
+		redirectURL = "http://localhost:8080/api/auth/callback"
+	}
+
+	if clientID == "" || clientSecret == "" {
+		panic("GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET devono essere configurati!")
+	}
+
 	googleOauthConfig = &oauth2.Config{
-		ClientID:     "230024361792-8kle4obojj4k2fp3bok6cah0f6ainrpf.apps.googleusercontent.com",
-		ClientSecret: "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",
-		RedirectURL:  "http://localhost:8080/api/auth/callback",
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  redirectURL,
 		Scopes: []string{
 			"https://www.googleapis.com/auth/userinfo.email",
 			"https://www.googleapis.com/auth/userinfo.profile",
@@ -126,35 +146,35 @@ func GoogleCallback(c *gin.Context) {
 			// Verifica se esiste già una richiesta pendente
 			var pendingRequest *models.RegistrationRequest
 			for i := range database.DB.RegistrationRequests {
-				if database.DB.RegistrationRequests[i].Email == userInfo.Email && 
-				   database.DB.RegistrationRequests[i].Status == models.RegistrationRequestStatusPending {
+				if database.DB.RegistrationRequests[i].Email == userInfo.Email &&
+					database.DB.RegistrationRequests[i].Status == models.RegistrationRequestStatusPending {
 					pendingRequest = &database.DB.RegistrationRequests[i]
 					break
 				}
 			}
-			
+
 			// Utente non registrato - redirect a pagina appropriata
 			firstName := userInfo.GivenName
 			lastName := userInfo.FamilyName
-			
+
 			// Se GivenName è vuoto, usa Name (per account business/aziendali)
 			if firstName == "" && userInfo.Name != "" {
 				firstName = userInfo.Name
 			}
-			
+
 			params := url.Values{}
 			params.Add("email", userInfo.Email)
 			params.Add("google_id", userInfo.ID)
 			params.Add("first_name", firstName)
 			params.Add("last_name", lastName)
 			params.Add("name", userInfo.Name)
-			
+
 			if pendingRequest != nil {
 				// Ha già una richiesta pendente
 				params.Add("pending", "true")
 				params.Add("request_date", pendingRequest.CreatedAt.Format("2006-01-02T15:04:05"))
 			}
-			
+
 			frontendURL := "http://localhost:3000/not-registered?" + params.Encode()
 			c.Redirect(http.StatusFound, frontendURL)
 			return

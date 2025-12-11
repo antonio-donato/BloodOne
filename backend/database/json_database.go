@@ -15,15 +15,15 @@ var (
 )
 
 type JSONDatabase struct {
-	Users                 []models.User                 `json:"users"`
-	Donations             []models.Donation             `json:"donations"`
-	Appointments          []models.Appointment          `json:"appointments"`
-	Suspensions           []models.Suspension           `json:"suspensions"`
-	RegistrationRequests  []models.RegistrationRequest  `json:"registration_requests"`
-	Schedule              *models.DonationSchedule      `json:"schedule"`
-	ExcludedDates         []models.ExcludedDate         `json:"excluded_dates"`
-	SpecialCapacities     []models.SpecialCapacity      `json:"special_capacities"`
-	filename              string
+	Users                []models.User                `json:"users"`
+	Donations            []models.Donation            `json:"donations"`
+	Appointments         []models.Appointment         `json:"appointments"`
+	Suspensions          []models.Suspension          `json:"suspensions"`
+	RegistrationRequests []models.RegistrationRequest `json:"registration_requests"`
+	Schedule             *models.DonationSchedule     `json:"schedule"`
+	ExcludedDates        []models.ExcludedDate        `json:"excluded_dates"`
+	SpecialCapacities    []models.SpecialCapacity     `json:"special_capacities"`
+	filename             string
 }
 
 func Connect() {

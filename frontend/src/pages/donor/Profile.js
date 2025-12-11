@@ -156,7 +156,7 @@ function DonorProfile() {
               </label>
             </div>
             <small>
-              Il sesso determina l'intervallo tra le donazioni: 
+              Il sesso determina l'intervallo tra le donazioni:
               {formData.gender === 'M' ? ' 3 mesi per gli uomini' : ' 6 mesi per le donne'}
             </small>
           </div>
@@ -202,8 +202,8 @@ function DonorProfile() {
           <div className="info-card">
             <h3>📅 Intervallo Donazioni</h3>
             <p>
-              {formData.gender === 'M' 
-                ? 'Come uomo, puoi donare ogni 3 mesi.' 
+              {formData.gender === 'M'
+                ? 'Come uomo, puoi donare ogni 3 mesi.'
                 : 'Come donna, puoi donare ogni 6 mesi.'}
             </p>
           </div>

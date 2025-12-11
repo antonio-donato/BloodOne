@@ -10,13 +10,13 @@ function RegistrationRequests() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
-  
+
   // Modal states
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showAssociateModal, setShowAssociateModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  
+
   // Form states
   const [approveForm, setApproveForm] = useState({
     first_name: '',
@@ -145,7 +145,7 @@ function RegistrationRequests() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     !u.google_id && (
       u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -181,25 +181,25 @@ function RegistrationRequests() {
 
       {/* Filters */}
       <div className="filters-bar">
-        <button 
+        <button
           className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
           onClick={() => setFilter('pending')}
         >
           ⏳ In Attesa ({requests.filter(r => r.status === 'pending').length || 0})
         </button>
-        <button 
+        <button
           className={`filter-btn ${filter === 'approved' ? 'active' : ''}`}
           onClick={() => setFilter('approved')}
         >
           ✅ Approvate
         </button>
-        <button 
+        <button
           className={`filter-btn ${filter === 'rejected' ? 'active' : ''}`}
           onClick={() => setFilter('rejected')}
         >
           ❌ Rifiutate
         </button>
-        <button 
+        <button
           className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
           onClick={() => setFilter('all')}
         >
@@ -437,8 +437,8 @@ function RegistrationRequests() {
                   <p className="no-users">Nessun utente senza account Google trovato</p>
                 ) : (
                   filteredUsers.map((user) => (
-                    <div 
-                      key={user.id} 
+                    <div
+                      key={user.id}
                       className={`user-option ${associateUserId === String(user.id) ? 'selected' : ''}`}
                       onClick={() => setAssociateUserId(String(user.id))}
                     >

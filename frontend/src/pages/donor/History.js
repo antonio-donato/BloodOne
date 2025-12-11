@@ -139,7 +139,7 @@ function DonorHistory() {
                       <h3>Appuntamento</h3>
                       {getStatusBadge(appointment.status)}
                     </div>
-                    
+
                     {appointment.status === 'pending' && (
                       <div className="proposed-dates">
                         <p><strong>Date proposte:</strong></p>
@@ -150,7 +150,7 @@ function DonorHistory() {
                         </ul>
                       </div>
                     )}
-                    
+
                     {appointment.confirmed_date && (
                       <div className="item-date">
                         <strong>Data confermata:</strong>{' '}

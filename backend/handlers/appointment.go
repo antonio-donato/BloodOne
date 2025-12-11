@@ -12,28 +12,28 @@ import (
 
 func GetAppointments(c *gin.Context) {
 	status := c.Query("status")
-	
+
 	// Creiamo una risposta con info utente incluse
 	type AppointmentWithUser struct {
-		ID             uint                     `json:"id"`
-		CreatedAt      time.Time                `json:"created_at"`
-		DonorID        uint                     `json:"donor_id"`
-		UserID         uint                     `json:"user_id"`
-		ProposedDate1  time.Time                `json:"proposed_date_1"`
-		ProposedDate2  time.Time                `json:"proposed_date_2"`
-		ProposedDate3  time.Time                `json:"proposed_date_3"`
-		ConfirmedDate  *time.Time               `json:"confirmed_date"`
-		Status         models.AppointmentStatus `json:"status"`
-		User           *models.User             `json:"user"`
+		ID            uint                     `json:"id"`
+		CreatedAt     time.Time                `json:"created_at"`
+		DonorID       uint                     `json:"donor_id"`
+		UserID        uint                     `json:"user_id"`
+		ProposedDate1 time.Time                `json:"proposed_date_1"`
+		ProposedDate2 time.Time                `json:"proposed_date_2"`
+		ProposedDate3 time.Time                `json:"proposed_date_3"`
+		ConfirmedDate *time.Time               `json:"confirmed_date"`
+		Status        models.AppointmentStatus `json:"status"`
+		User          *models.User             `json:"user"`
 	}
-	
+
 	var result []AppointmentWithUser
 	for _, a := range database.DB.Appointments {
 		// Filtro per status se specificato
 		if status != "" && string(a.Status) != status {
 			continue
 		}
-		
+
 		// Trova l'utente
 		var user *models.User
 		for i := range database.DB.Users {
@@ -42,7 +42,7 @@ func GetAppointments(c *gin.Context) {
 				break
 			}
 		}
-		
+
 		result = append(result, AppointmentWithUser{
 			ID:            a.ID,
 			CreatedAt:     a.CreatedAt,
@@ -56,7 +56,7 @@ func GetAppointments(c *gin.Context) {
 			User:          user,
 		})
 	}
-	
+
 	c.JSON(http.StatusOK, result)
 }
 
@@ -87,10 +87,10 @@ func CreateAppointment(c *gin.Context) {
 
 func ProposeAppointmentDates(c *gin.Context) {
 	var req struct {
-		DonorID        uint   `json:"donor_id"`
-		ProposedDate1  string `json:"proposed_date_1"`
-		ProposedDate2  string `json:"proposed_date_2"`
-		ProposedDate3  string `json:"proposed_date_3"`
+		DonorID       uint   `json:"donor_id"`
+		ProposedDate1 string `json:"proposed_date_1"`
+		ProposedDate2 string `json:"proposed_date_2"`
+		ProposedDate3 string `json:"proposed_date_3"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -100,7 +100,7 @@ func ProposeAppointmentDates(c *gin.Context) {
 	// Parse le date
 	var date1, date2, date3 time.Time
 	var err error
-	
+
 	if req.ProposedDate1 != "" {
 		date1, err = time.Parse("2006-01-02", req.ProposedDate1)
 		if err != nil {
@@ -110,7 +110,7 @@ func ProposeAppointmentDates(c *gin.Context) {
 	} else {
 		date1 = time.Now().AddDate(0, 0, 7)
 	}
-	
+
 	if req.ProposedDate2 != "" {
 		date2, err = time.Parse("2006-01-02", req.ProposedDate2)
 		if err != nil {
@@ -120,7 +120,7 @@ func ProposeAppointmentDates(c *gin.Context) {
 	} else {
 		date2 = time.Now().AddDate(0, 0, 14)
 	}
-	
+
 	if req.ProposedDate3 != "" {
 		date3, err = time.Parse("2006-01-02", req.ProposedDate3)
 		if err != nil {
@@ -167,7 +167,7 @@ func ConfirmAppointment(c *gin.Context) {
 		if a.ID == uint(id) {
 			database.DB.Appointments[i].ConfirmedDate = &req.SelectedDate
 			database.DB.Appointments[i].Status = models.AppointmentStatusConfirmed
-			
+
 			// Aggiorna anche next_appointment_date dell'utente
 			for j := range database.DB.Users {
 				if database.DB.Users[j].ID == a.DonorID {
@@ -176,7 +176,7 @@ func ConfirmAppointment(c *gin.Context) {
 					break
 				}
 			}
-			
+
 			database.DB.Save()
 			c.JSON(http.StatusOK, database.DB.Appointments[i])
 			return

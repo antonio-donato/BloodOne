@@ -8,7 +8,7 @@ function AdminSchedule() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   // Schedule state
   const [schedule, setSchedule] = useState({
     monday: false,
@@ -26,7 +26,7 @@ function AdminSchedule() {
     saturday_capacity: 10,
     sunday_capacity: 10,
   });
-  
+
   // Excluded dates state
   const [excludedDates, setExcludedDates] = useState([]);
   const [newExcludedDate, setNewExcludedDate] = useState({ date: '', reason: '' });
@@ -53,7 +53,7 @@ function AdminSchedule() {
         adminScheduleAPI.getSchedule(),
         adminScheduleAPI.getExcludedDates(),
       ]);
-      
+
       if (scheduleRes.data) {
         setSchedule(scheduleRes.data);
       }
@@ -151,8 +151,8 @@ function AdminSchedule() {
 
         <div className="days-grid">
           {days.map(day => (
-            <div 
-              key={day.key} 
+            <div
+              key={day.key}
               className={`day-card ${schedule[day.key] ? 'active' : 'inactive'}`}
             >
               <div className="day-header">
@@ -166,7 +166,7 @@ function AdminSchedule() {
                 </label>
                 <span className="day-name">{day.label}</span>
               </div>
-              
+
               {schedule[day.key] && (
                 <div className="day-capacity">
                   <label>Capacità massima:</label>
@@ -185,8 +185,8 @@ function AdminSchedule() {
         </div>
 
         <div className="section-actions">
-          <button 
-            className="btn-save" 
+          <button
+            className="btn-save"
             onClick={handleSaveSchedule}
             disabled={saving}
           >
@@ -200,7 +200,7 @@ function AdminSchedule() {
         <div className="section-header">
           <h2>🚫 Date Escluse</h2>
           <p>Festività o giorni in cui non sono possibili donazioni</p>
-          <button 
+          <button
             className="btn-add"
             onClick={() => setShowAddExcluded(true)}
           >
@@ -252,16 +252,16 @@ function AdminSchedule() {
                 <div key={ed.id} className="excluded-date-item">
                   <div className="date-info">
                     <span className="date-value">
-                      📅 {new Date(ed.date).toLocaleDateString('it-IT', { 
-                        weekday: 'long', 
-                        day: 'numeric', 
-                        month: 'long', 
-                        year: 'numeric' 
+                      📅 {new Date(ed.date).toLocaleDateString('it-IT', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
                       })}
                     </span>
                     {ed.reason && <span className="date-reason">{ed.reason}</span>}
                   </div>
-                  <button 
+                  <button
                     className="btn-delete-date"
                     onClick={() => handleDeleteExcludedDate(ed.id)}
                   >

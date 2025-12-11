@@ -10,9 +10,15 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Carica variabili d'ambiente da .env (se esiste)
+	if err := godotenv.Load(); err != nil {
+		log.Println("Nessun file .env trovato, uso variabili d'ambiente di sistema")
+	}
+
 	// Connetti al database JSON (nessun CGO richiesto - funziona su Windows)
 	database.Connect()
 	database.Migrate()

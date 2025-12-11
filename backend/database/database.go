@@ -6,9 +6,10 @@ package database
 
 import (
 	"bloodone/models"
+	"log"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"log"
 )
 
 var SQLDB *gorm.DB
@@ -38,7 +39,7 @@ func MigrateSQL() {
 	}
 
 	log.Println("Database migrated successfully")
-	
+
 	// Crea configurazione schedule di default se non esiste
 	var schedule models.DonationSchedule
 	result := SQLDB.First(&schedule)

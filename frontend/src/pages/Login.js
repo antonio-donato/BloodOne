@@ -34,19 +34,19 @@ function Login() {
       if (tokenParts.length === 3) {
         const payload = JSON.parse(atob(tokenParts[1]));
         console.log('Token payload:', payload);
-        
+
         // Salva il token e carica i dati utente completi
         localStorage.setItem('token', token);
         console.log('Token saved to localStorage');
-        
+
         // Carica i dati utente dal backend
         console.log('Calling getCurrentUser API...');
         const response = await authAPI.getCurrentUser();
         console.log('User data received:', response.data);
-        
+
         login(token, response.data);
         console.log('Login function called');
-        
+
         toast.success('Login effettuato con successo!');
         const targetPath = payload.is_admin ? '/admin' : '/dashboard';
         console.log('Navigating to:', targetPath);

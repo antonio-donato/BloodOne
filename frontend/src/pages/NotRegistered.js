@@ -7,7 +7,7 @@ import './NotRegistered.css';
 function NotRegistered() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const email = searchParams.get('email') || '';
   const googleName = searchParams.get('name') || '';
   const googleFirstName = searchParams.get('first_name') || '';
@@ -15,17 +15,17 @@ function NotRegistered() {
   const googleId = searchParams.get('google_id') || '';
   const hasPendingRequest = searchParams.get('pending') === 'true';
   const requestDate = searchParams.get('request_date') || '';
-  
+
   // Se non abbiamo first_name/last_name separati, proviamo a splittare name
   let initialFirstName = googleFirstName;
   let initialLastName = googleLastName;
-  
+
   if (!initialFirstName && !initialLastName && googleName) {
     const parts = googleName.split(' ');
     initialFirstName = parts[0] || '';
     initialLastName = parts.slice(1).join(' ') || '';
   }
-  
+
   // Se ha già una richiesta pendente, mostra direttamente lo stato 'pending'
   const [step, setStep] = useState(hasPendingRequest ? 'pending' : 'info'); // 'info' | 'form' | 'sent' | 'pending'
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ function NotRegistered() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.first_name || !formData.last_name || !formData.gender) {
       toast.error('Compila tutti i campi obbligatori');
       return;
@@ -96,7 +96,7 @@ function NotRegistered() {
         <div className="not-registered-card">
           <div className="not-registered-icon">⏳</div>
           <h1>Richiesta in Attesa</h1>
-          
+
           <div className="pending-box">
             <p>
               La tua richiesta di registrazione per l'account <strong>{email}</strong> è già stata inviata ed è attualmente <strong>in fase di valutazione</strong>.
@@ -133,7 +133,7 @@ function NotRegistered() {
         <div className="not-registered-card">
           <div className="not-registered-icon">👋</div>
           <h1>Benvenuto!</h1>
-          
+
           <div className="not-registered-message">
             <p>
               L'account <strong>{email}</strong> non è ancora registrato nel sistema.
@@ -163,7 +163,7 @@ function NotRegistered() {
         <div className="not-registered-card wide">
           <div className="not-registered-icon">📝</div>
           <h1>Richiesta di Registrazione</h1>
-          
+
           <form onSubmit={handleSubmit} className="registration-form">
             <div className="form-info-box">
               <p>📧 <strong>Email:</strong> {email}</p>
@@ -258,7 +258,7 @@ function NotRegistered() {
       <div className="not-registered-card">
         <div className="not-registered-icon">✅</div>
         <h1>Richiesta Inviata!</h1>
-        
+
         <div className="not-registered-message success">
           <p>
             La tua richiesta di registrazione è stata inviata con successo.

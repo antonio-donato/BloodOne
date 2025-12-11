@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -17,31 +18,31 @@ type User struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
-	
+
 	// Informazioni base
-	Email         string     `gorm:"uniqueIndex;not null" json:"email"`
-	GoogleID      string     `gorm:"uniqueIndex" json:"google_id,omitempty"`
-	FirstName     string     `gorm:"not null" json:"first_name"`
-	LastName      string     `gorm:"not null" json:"last_name"`
-	PhoneNumber   string     `json:"phone_number"`
-	Gender        Gender     `gorm:"type:varchar(1)" json:"gender"`
-	BloodType     string     `json:"blood_type"`
-	BirthDate     *time.Time `json:"birth_date,omitempty"`
-	
+	Email       string     `gorm:"uniqueIndex;not null" json:"email"`
+	GoogleID    string     `gorm:"uniqueIndex" json:"google_id,omitempty"`
+	FirstName   string     `gorm:"not null" json:"first_name"`
+	LastName    string     `gorm:"not null" json:"last_name"`
+	PhoneNumber string     `json:"phone_number"`
+	Gender      Gender     `gorm:"type:varchar(1)" json:"gender"`
+	BloodType   string     `json:"blood_type"`
+	BirthDate   *time.Time `json:"birth_date,omitempty"`
+
 	// Ruolo
-	IsAdmin       bool    `gorm:"default:false" json:"is_admin"`
-	
+	IsAdmin bool `gorm:"default:false" json:"is_admin"`
+
 	// Stato donatore
-	IsActive      bool    `gorm:"default:true" json:"is_active"`
-	IsSuspended   bool    `gorm:"default:false" json:"is_suspended"`
-	
+	IsActive    bool `gorm:"default:true" json:"is_active"`
+	IsSuspended bool `gorm:"default:false" json:"is_suspended"`
+
 	// Data prossimo appuntamento confermato
 	NextAppointmentDate *time.Time `json:"next_appointment_date,omitempty"`
-	
+
 	// Relazioni
-	Donations     []Donation    `gorm:"foreignKey:DonorID" json:"donations,omitempty"`
-	Appointments  []Appointment `gorm:"foreignKey:DonorID" json:"appointments,omitempty"`
-	Suspensions   []Suspension  `gorm:"foreignKey:DonorID" json:"suspensions,omitempty"`
+	Donations    []Donation    `gorm:"foreignKey:DonorID" json:"donations,omitempty"`
+	Appointments []Appointment `gorm:"foreignKey:DonorID" json:"appointments,omitempty"`
+	Suspensions  []Suspension  `gorm:"foreignKey:DonorID" json:"suspensions,omitempty"`
 }
 
 type UserResponse struct {

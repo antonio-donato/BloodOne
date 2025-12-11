@@ -15,7 +15,7 @@ function AdminDashboard() {
     pendingRegistrations: 0,
   });
   const [loading, setLoading] = useState(true);
-  
+
   // State per il modal di proposta date
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState(null);
@@ -41,14 +41,14 @@ function AdminDashboard() {
       const users = usersResponse.data || [];
       const appointments = appointmentsResponse.data || [];
       const pendingRegistrations = registrationsResponse.data?.count || 0;
-      
+
       // Arricchisci gli appuntamenti con i dati degli utenti
       const enrichedAppointments = appointments.map(apt => {
         const donor = users.find(u => u.id === apt.donor_id);
         return { ...apt, donor };
       });
       setPendingAppointments(enrichedAppointments);
-      
+
       setStats({
         totalUsers: users.length,
         activeUsers: users.filter(u => u.is_active && !u.is_suspended).length,
@@ -66,60 +66,60 @@ function AdminDashboard() {
 
   const handleProposeAppointment = async (donor) => {
     setSelectedDonor(donor);
-    
+
     // Calcola 3 date suggerite a partire dalla data di scadenza teorica
     const baseDate = donor.next_due_date ? new Date(donor.next_due_date) : new Date();
     const today = new Date();
-    
+
     // Se la data teorica è nel passato, parti da oggi
     const startDate = baseDate < today ? today : baseDate;
-    
+
     // Suggerisci 3 date: la prima disponibile, +3 giorni, +7 giorni
     const date1 = new Date(startDate);
     const date2 = new Date(startDate);
     date2.setDate(date2.getDate() + 3);
     const date3 = new Date(startDate);
     date3.setDate(date3.getDate() + 7);
-    
+
     setProposedDates([
       date1.toISOString().split('T')[0],
       date2.toISOString().split('T')[0],
       date3.toISOString().split('T')[0]
     ]);
-    
+
     setShowProposalModal(true);
   };
-  
+
   const handleDateChange = (index, value) => {
     const newDates = [...proposedDates];
     newDates[index] = value;
     setProposedDates(newDates);
   };
-  
+
   const handleSubmitProposal = async () => {
     // Verifica che tutte le date siano selezionate
     if (proposedDates.some(d => !d)) {
       toast.error('Seleziona tutte e 3 le date');
       return;
     }
-    
+
     // Verifica che le date siano diverse
     const uniqueDates = new Set(proposedDates);
     if (uniqueDates.size !== 3) {
       toast.error('Le 3 date devono essere diverse');
       return;
     }
-    
+
     // Chiedi conferma prima di inviare
     const confirmMessage = `Confermi di voler proporre le seguenti date a ${selectedDonor.first_name} ${selectedDonor.last_name}?\n\n` +
       `📅 ${new Date(proposedDates[0]).toLocaleDateString('it-IT')}\n` +
       `📅 ${new Date(proposedDates[1]).toLocaleDateString('it-IT')}\n` +
       `📅 ${new Date(proposedDates[2]).toLocaleDateString('it-IT')}`;
-    
+
     if (!window.confirm(confirmMessage)) {
       return;
     }
-    
+
     try {
       await adminAppointmentAPI.proposeAppointment(selectedDonor.id, {
         proposed_date_1: proposedDates[0],
@@ -139,7 +139,7 @@ function AdminDashboard() {
     if (!window.confirm('Sei sicuro di voler annullare questa proposta di appuntamento?')) {
       return;
     }
-    
+
     try {
       await adminAppointmentAPI.cancelAppointment(appointmentId);
       toast.success('Proposta annullata con successo');
@@ -256,7 +256,7 @@ function AdminDashboard() {
                       <div className="info-item">
                         <span className="info-label">Ultima donazione:</span>
                         <span className="info-value">
-                          {donor.last_donation_date 
+                          {donor.last_donation_date
                             ? new Date(donor.last_donation_date).toLocaleDateString('it-IT')
                             : 'Mai'}
                         </span>
@@ -401,7 +401,7 @@ function AdminDashboard() {
               <h2>📆 Proponi Date Donazione</h2>
               <button className="btn-close" onClick={() => setShowProposalModal(false)}>×</button>
             </div>
-            
+
             <div className="modal-body">
               <div className="donor-summary">
                 <h3>{selectedDonor.first_name} {selectedDonor.last_name}</h3>
@@ -412,7 +412,7 @@ function AdminDashboard() {
                 </p>
                 <p className="theoretical-date">
                   <strong>Data scadenza teorica:</strong>{' '}
-                  {selectedDonor.next_due_date 
+                  {selectedDonor.next_due_date
                     ? new Date(selectedDonor.next_due_date).toLocaleDateString('it-IT', {
                         weekday: 'long',
                         day: 'numeric',
@@ -422,12 +422,12 @@ function AdminDashboard() {
                     : 'Non disponibile'}
                 </p>
               </div>
-              
+
               <div className="dates-selection">
                 <p className="dates-instructions">
                   Seleziona 3 date da proporre al donatore. Le date suggerite partono dalla scadenza teorica.
                 </p>
-                
+
                 <div className="date-inputs">
                   <div className="date-input-group">
                     <label>📅 Prima opzione</label>
@@ -438,7 +438,7 @@ function AdminDashboard() {
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
-                  
+
                   <div className="date-input-group">
                     <label>📅 Seconda opzione</label>
                     <input
@@ -448,7 +448,7 @@ function AdminDashboard() {
                       min={new Date().toISOString().split('T')[0]}
                     />
                   </div>
-                  
+
                   <div className="date-input-group">
                     <label>📅 Terza opzione</label>
                     <input
@@ -461,7 +461,7 @@ function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => setShowProposalModal(false)}>
                 Annulla
