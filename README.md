@@ -213,7 +213,7 @@ GitHub Actions builderà e deployerà automaticamente su GitHub Pages.
 3. Seleziona branch: `gh-pages` e cartella `/ (root)`
 4. Clicca **Save**
 
----
+---------------
 
 ### STEP 4: Verifica il Deploy
 
